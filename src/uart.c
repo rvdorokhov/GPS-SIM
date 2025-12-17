@@ -138,7 +138,13 @@ void USART_TransmitNumber(long int num, uint8_t n)
     USART_Transmitchar(num + '0', n);
 }
 
-
+uint8_t uart_available(uint8_t n)
+{
+    if (n == 0)
+        return (UCSR0A & (1 << RXC0)) != 0;
+    else
+        return (UCSR1A & (1 << RXC1)) != 0;
+}
 
 /* --- Устаревшая функция (закомментирована)
  * Передавала число в бинарном виде из 8 бит

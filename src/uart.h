@@ -16,6 +16,6 @@ void USART_Transmitchar( unsigned char, uint8_t);
 unsigned char USART_Receive(uint8_t);
 void USART_TransmitString(char *str, uint8_t);
 void USART_TransmitNumber(long int, uint8_t);
-//void USART0_TransmitBinary(int);
+uint8_t uart_available(uint8_t n);
 
 #endif
