@@ -88,17 +88,15 @@ int main(void)
     sendATCommand("ATE0", true);                 // Выключаем эхо
     sendATCommand("AT&W", true);                 // сохранить профиль
 
+    sendATCommand("AT+CHFA=2", true);
+    sendATCommand("AT+CLVL=100", true);
+
     sendATCommand("AT+CPMS=\"SM\",\"SM\",\"SM\"", true);
     sendATCommand("AT+CMGD=1,1", true);   // удалить все прочитанный сообщения
     sendATCommand("AT+CPMS?", true);
     sendATCommand("AT+CMGL=\"ALL\"", true);
 
-
-    sendSMS("+79915760104", "success1");
-    _delay_ms(3000);
-    sendSMS("+79915760104", "success2");
-    _delay_ms(3000);
-    sendSMS("+79915760104", "success3");
+    sendSMS("+79915760104", "START");
     _delay_ms(3000);
 
     // Буфер для строк от SIM (URC: +CMTI, RING и т.п.)
@@ -121,7 +119,9 @@ int main(void)
     for (;;)
     {
         if ((uint32_t)(millis() - last_poll) >= TIMEOUT)
-        {
+        {    
+            sendATCommand("AT+STTONE=1,16,1000", true);
+
             last_poll = millis();
 
             while (sim_sms_get_unread_body_from("+79915760104", body, sizeof(body)))
@@ -130,7 +130,7 @@ int main(void)
                 USART_TransmitString(body, COMP_UART);
                 USART_TransmitString("\n", COMP_UART);
 
-                sendSMS("+79915760104", "got sms");
+                sendSMS("+79915760104", body);
                 _delay_ms(3000);
             }
         }

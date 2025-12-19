@@ -31,7 +31,7 @@ char *sim_wait_response(void)
     uint16_t pos = 0;
 
     uint16_t idle_ms = 0;
-    const uint16_t MAX_IDLE_MS   = 5000;   // можно 200-500мс
+    const uint16_t MAX_IDLE_MS   = 1000;   // можно 200-500мс
     const uint16_t MAX_TOTAL_MS  = 10000;
 
     uint16_t total_ms = 0;
