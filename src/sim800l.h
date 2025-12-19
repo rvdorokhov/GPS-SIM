@@ -27,4 +27,13 @@ void sendSMS(const char *phone, const char *message);
 // Обработка входящего SMS-сообщения, извлечение тела и переключение needGPS
 void handleSMS(const char *msg);
 
+bool sim_sms_has_unread(void);
+
+// Достаёт ТЕЛО первого непрочитанного SMS от нужного номера.
+// Возвращает true если нашло и положило текст в out_body.
+// (Сообщение после успешного чтения удаляется, чтобы не ловить его снова.)
+bool sim_sms_get_unread_body_from(const char *wanted_phone,
+                                 char *out_body,
+                                 size_t out_body_sz);
+
 #endif
