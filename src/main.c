@@ -16,18 +16,18 @@
 // ---------------------------------------------------
 // Настройки
 // ---------------------------------------------------
-#define COMP_UART      1   // USART1 -> GPS
+#define COMP_UART      0   // USART1 -> GPS
 
 #define BAUD          9600UL
 
 // UBRR = F_CPU/(16*BAUD) - 1
 #define UBRR_VALUE    ((F_CPU / (16UL * BAUD)) - 1)
 
+bool new_sms = false;
+char idx_str[8];
+
 int main(void)
 {
-   // stdin = &uart_stdin;
-    //stdout = &uart_stdout;
-
     //init_uart();
     //sei();
 
@@ -35,8 +35,6 @@ int main(void)
     USART_Init(UBRR_VALUE, SIM_UART);
     // UART1 = GPS
     USART_Init(UBRR_VALUE, GPS_UART);
-
-    // USART_TransmitString("UART_TERM_CONNECTED", COMP_UART); 
 
     // PA0 – выход, сразу в 1 (открываем MOSFET)
     DDRA |= (1 << PA0);
@@ -47,26 +45,31 @@ int main(void)
 
     // Инициализация модема
     sendATCommand("AT", true);
-    sendATCommand("AT+CMGF=1", true);            // текстовый режим SMS
+    sendATCommand("AT+CMGF=1;&W", true);            // текстовый режим SMS
     sendATCommand("AT+CNMI=2,1,0,0,0", true);    // +CMTI при новой SMS
     sendATCommand("ATE0", true);                 // Выключаем эхо
     sendATCommand("AT&W", true);                 // сохранить профиль
 
     sendSMS("+79915760104", "success1");
-    _delay_ms(5000);
+    _delay_ms(3000);
     sendSMS("+79915760104", "success2");
-    _delay_ms(5000);
+    _delay_ms(3000);
     sendSMS("+79915760104", "success3");
-    _delay_ms(5000);
+    _delay_ms(3000);
+
+    sendATCommand("AT+CMGR=40", true);
 
     // Буфер для строк от SIM (URC: +CMTI, RING и т.п.)
-    char sim_line[RESP_BUF_SIZE];
+    static char sim_line[RESP_BUF_SIZE];
     uint16_t sim_pos = 0;
 
     // Буфер для GPS
     uint16_t gps_pos = 0;
 
     uint16_t tick = 0;
+
+        USART_TransmitString("UART_TERM_CONNECTED", COMP_UART); 
+        USART_TransmitString("\n", COMP_UART);
 
     for (;;)
     {
@@ -104,20 +107,24 @@ int main(void)
         */
 
         // ---------- SIM800: читаем построчно ----------
-        if (uart_available(SIM_UART))
-        {
-            char c = USART_Receive(SIM_UART);
-            if (c == '\r')
+        strcpy(sim_line, sim_wait_response());
+
+            //USART_TransmitString("GOT SIM NOTIFICATION", COMP_UART);
+            //USART_TransmitString(c, COMP_UART);
+            //USART_TransmitString("\n", COMP_UART);
+            //sendSMS("+79915760104", sim_line);
+                       // _delay_ms(5000);
+
+            if (sim_line[0] != '\0')
             {
-                // игнорируем CR
-            }
-            else if (c == '\n')
-            {
-                sim_line[sim_pos] = '\0';
+                //sendSMS("+79915760104", sim_line);
+                       // _delay_ms(5000);
                 str_trim(sim_line);
 
-                if (sim_pos > 0)
-                {
+                USART_TransmitString("GOT SIM NOTIFICATION", COMP_UART);
+                USART_TransmitString(sim_line, COMP_UART);
+                USART_TransmitString("\n", COMP_UART);
+
                     // Обработка строки
                     if (str_starts_with(sim_line, "RING"))
                     {
@@ -125,30 +132,29 @@ int main(void)
                     }
                     else if (str_starts_with(sim_line, "+CMTI:"))
                     {
+                        USART_TransmitString("GOT SMS NOTIFICATION ", COMP_UART);
+                        USART_TransmitString(sim_line, COMP_UART);
+                        USART_TransmitString("\n", COMP_UART);
+                        //sendSMS("+79915760104", sim_line);
+                        //_delay_ms(5000);
+
                         // +CMTI: "ME",20
                         const char *comma = strrchr(sim_line, ',');
                         if (comma)
                         {
-                            char idx_str[8];
                             strncpy(idx_str, comma + 1, sizeof(idx_str) - 1);
                             idx_str[sizeof(idx_str) - 1] = '\0';
                             str_trim(idx_str);
-
+ 
                             char cmd[32];
                             snprintf(cmd, sizeof(cmd), "AT+CMGR=%s", idx_str);
-                            char *resp = sendATCommand(cmd, true);
-                            handleSMS(resp);
-                        }
-                    }
-                }
 
-                sim_pos = 0;
-            }
-            else
-            {
-                if (sim_pos < (RESP_BUF_SIZE - 1))
-                {
-                    sim_line[sim_pos++] = c;
+                            char *resp = sendATCommand(cmd, true);
+
+                            handleSMS(resp);
+
+                           // new_sms = true;
+                        }
                 }
             }
         }
@@ -179,8 +185,5 @@ int main(void)
             }
         }
         */
-    }
-
-
     return 0;
 }

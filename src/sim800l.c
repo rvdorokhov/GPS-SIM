@@ -1,5 +1,8 @@
 #include "uart.h"
 #include "sim800l.h"
+
+
+#define COMP_UART      0   // USART1 -> GPS
 // 
 // ---------------------------------------------------
 // Отправка строк в SIM
@@ -7,11 +10,11 @@
 void sim_send_line(const char *s)
 {
     USART_TransmitString((char *)s, SIM_UART);
-    USART_Transmitchar('\r', SIM_UART);   // SIM800 достаточно CR
+    USART_Transmitchar('\r', SIM_UART);  
     
-    char buf[80];
-    snprintf(buf, sizeof(buf), "send line to sim: %s\r\n", s);
-   // USART_TransmitString(buf, COMP_UART);
+    //USART_TransmitString("SEND SIM LINE ", COMP_UART);
+   // USART_TransmitString((char *)s, COMP_UART);
+    //USART_TransmitString("\n", COMP_UART);
 }
 
 // ---------------------------------------------------
@@ -20,20 +23,29 @@ void sim_send_line(const char *s)
 // ---------------------------------------------------
 char *sim_wait_response(void)
 {
+    sim_resp[0] = '\0';
+    //USART_TransmitString("SIM WAIT RESPONSE ", COMP_UART);
+    //USART_TransmitString("\n", COMP_UART);
+
     memset(sim_resp, 0, sizeof(sim_resp));
     uint16_t pos = 0;
 
     uint16_t idle_ms = 0;
-    const uint16_t MAX_IDLE_MS   = 200;   // можно 200-500мс
+    const uint16_t MAX_IDLE_MS   = 5000;   // можно 200-500мс
     const uint16_t MAX_TOTAL_MS  = 10000;
 
     uint16_t total_ms = 0;
 
     while (total_ms < MAX_TOTAL_MS)
     {
-        if (uart_available(SIM_UART))              // <-- ключевое
+        if (uart_available(SIM_UART))           
         {
             char c = USART_Receive(SIM_UART);      // блокирующий ОК, т.к. байт уже есть
+
+           // USART_TransmitString("GOT FROM SIM ", COMP_UART);
+            //USART_TransmitString(sim_resp, COMP_UART);
+            //USART_TransmitString("\n", COMP_UART);
+
             idle_ms = 0;
 
             if (pos < (RESP_BUF_SIZE - 1))
@@ -48,10 +60,17 @@ char *sim_wait_response(void)
             idle_ms++;
             total_ms++;
 
-            if (idle_ms >= MAX_IDLE_MS)
+            if (idle_ms >= MAX_IDLE_MS) {
+                //USART_TransmitString("TOTAL BREAK ", COMP_UART);
+                //USART_TransmitString("\n", COMP_UART);
                 break;
+            }    
         }
     }
+
+    USART_TransmitString("SIM RESP ", COMP_UART);
+    USART_TransmitString(sim_resp, COMP_UART);
+    USART_TransmitString("\n", COMP_UART);
 
     return sim_resp;
 }
@@ -63,8 +82,6 @@ char *sim_wait_response(void)
 // ---------------------------------------------------
 char *sendATCommand(const char *cmd, bool waiting)
 {
-    sim_resp[0] = '\0';
-
     sim_send_line(cmd);
 
    // USART_TransmitString("send command: ", COMP_UART);
@@ -85,10 +102,14 @@ char *sendATCommand(const char *cmd, bool waiting)
                 p += 2;
                 memmove(resp, p, strlen(p) + 1);
             }
-        } */
+        }
+            */
 
       //  USART_TransmitString("got response:", COMP_UART);
       //  USART_TransmitString(resp, COMP_UART);
+        //USART_TransmitString("GOT SIM RESP SEND AT ", COMP_UART);
+        //USART_TransmitString(resp, COMP_UART);
+        //USART_TransmitString("\n", COMP_UART);
 
         return resp;
     }
@@ -101,6 +122,10 @@ char *sendATCommand(const char *cmd, bool waiting)
 // ---------------------------------------------------
 void sendSMS(const char *phone, const char *message)
 {
+    //USART_TransmitString("SEND SMS ", COMP_UART);
+    //USART_TransmitString(message, COMP_UART);
+    //USART_TransmitString("\n", COMP_UART);
+
     char cmd[64];
     snprintf(cmd, sizeof(cmd), "AT+CMGS=\"%s\"", phone);
 
@@ -108,9 +133,15 @@ void sendSMS(const char *phone, const char *message)
 
     // текст + Ctrl+Z
     char tmp[256];
-    snprintf(tmp, sizeof(tmp), "%s\r\n%c", message, 26);
+    snprintf(tmp, sizeof(tmp), "%s\r\n%c", message, (char)26);
 
     sendATCommand(tmp, true);
+
+  //  USART_TransmitString("SMS SENDED ", COMP_UART);
+   // USART_TransmitString(cmd, COMP_UART);
+    //USART_TransmitString("\n", COMP_UART);
+    //USART_TransmitString(tmp, COMP_UART);
+    //USART_TransmitString("\n", COMP_UART);
 }
 
 // ---------------------------------------------------
@@ -118,6 +149,10 @@ void sendSMS(const char *phone, const char *message)
 // ---------------------------------------------------
 void handleSMS(const char *msg)
 {
+    
+   // USART_TransmitString("HANDLE SMS 1", COMP_UART);
+    //USART_TransmitString("\n", COMP_UART);
+
     //sendSMS("+79915760104", "handle sms: ");
     //sendSMS("+79915760104", msg);
     // Ищем "+CMGR: "
@@ -125,10 +160,16 @@ void handleSMS(const char *msg)
     if (!cmgr)
         return;
 
+//USART_TransmitString("HANDLE SMS 2", COMP_UART);
+  //  USART_TransmitString("\n", COMP_UART);
+
     // Заголовок до первой \r
     const char *cr = strstr(cmgr, "\r");
     if (!cr)
         return;
+
+  //      USART_TransmitString("HANDLE SMS 3", COMP_UART);
+   // USART_TransmitString("\n", COMP_UART);
 
     size_t header_len = cr - cmgr;
     char header[128];
@@ -137,11 +178,17 @@ void handleSMS(const char *msg)
     memcpy(header, cmgr, header_len);
     header[header_len] = '\0';
 
+//USART_TransmitString("HANDLE SMS 4", COMP_UART);
+  //  USART_TransmitString("\n", COMP_UART);
+
     // Тело SMS начинается через два символа после \r: то есть после "\r\n"
     const char *body_start = cr + 2;
     const char *ok_pos = strstr(body_start, "OK");
     if (!ok_pos)
         return;
+
+//USART_TransmitString("HANDLE SMS 5", COMP_UART);
+  //  USART_TransmitString("\n", COMP_UART);
 
     // Копируем тело SMS в буфер body[]
     size_t body_len = ok_pos - body_start;
@@ -151,6 +198,9 @@ void handleSMS(const char *msg)
     memcpy(body, body_start, body_len);
     body[body_len] = '\0';
     str_trim(body);
+
+//USART_TransmitString("HANDLE SMS 6", COMP_UART);
+  //  USART_TransmitString("\n", COMP_UART);
 
     // Номер телефона в header: между первым и вторым ","
     // +CMGR: "REC UNREAD","+79915760104","","..."
@@ -170,8 +220,11 @@ void handleSMS(const char *msg)
         }
     }
 
-    char reply[64];
+    USART_TransmitString("PPP", COMP_UART);
 
-    sendSMS("+79915760104", reply);
-    // Можно было бы на phone, если отвечать отправителю.
+    sendSMS("+79915760104", body);
+    
+    USART_TransmitString("HANDLE SMS SUCCESSFULL ", COMP_UART);
+    USART_TransmitString(body, COMP_UART);
+    USART_TransmitString("\n", COMP_UART);
 }

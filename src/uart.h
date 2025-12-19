@@ -5,6 +5,9 @@
 #include <avr/interrupt.h>
 // #define F_CPU 16000000UL
 #include <util/delay.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #define New_Line(n) USART_Transmitchar(0x0A,n);\
 USART_Transmitchar(0x0D,n);
