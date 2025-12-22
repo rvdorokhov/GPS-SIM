@@ -24,9 +24,6 @@ char *sim_wait_response(void);
 // Отправка SMS на указанный номер с заданным текстом
 void sendSMS(const char *phone, const char *message);
 
-// Обработка входящего SMS-сообщения, извлечение тела и переключение needGPS
-void handleSMS(const char *msg);
-
 bool sim_sms_has_unread(void);
 
 // Достаёт ТЕЛО первого непрочитанного SMS от нужного номера.

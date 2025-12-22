@@ -21,4 +21,8 @@ double nmeaToDecimal(const char *coord, char hemisphere);
 
 char *dtostrf(double val, signed char width, unsigned char prec, char *s);
 
+bool gps_read_nmea_line(char *out, size_t outsz);
+
+void sendGPS(const char *sentence);
+
 #endif
